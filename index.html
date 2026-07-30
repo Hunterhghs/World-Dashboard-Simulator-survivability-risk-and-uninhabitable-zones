@@ -544,12 +544,12 @@ function renderChoropleth() {
       let iso=(feature.properties['ISO3166-1-Alpha-3']||'').trim();
       if(iso==='-99'||!iso){const OVR={'France':'FRA','Norway':'NOR','Kosovo':'XKX','Somaliland':'SOM'};iso=OVR[name]||'';}
       const c=countryRiskMap[iso];
-      if(!c) return {fillColor:'#121a24',color:'rgba(255,255,255,0.04)',weight:0.4,fillOpacity:0.35};
+      if(!c) return {fillColor:'#121a24',color:'#000',weight:0.4,fillOpacity:0.25};
       const score=valAtYear(c,currentDim,currentYear);
       return {
         fillColor:dimColor(score,currentDim),
-        color:'rgba(201,162,74,0.10)',
-        weight:0.5,
+        color:'#000',
+        weight:0.6,
         fillOpacity:0.84
       };
     },
@@ -563,12 +563,12 @@ function renderChoropleth() {
         mouseover:function(e) {
           const score=valAtYear(c,currentDim,currentYear);
           const dim=DIMS[currentDim]; const pop=popAtYear(c,currentYear);
-          layer.setStyle({weight:1.5,color:'rgba(201,162,74,0.6)'});
-          layer.bindTooltip(`<strong>${name}</strong><br>${dim.label}: <b>${score}</b><br>Pop: ${pop<1?(pop*1000).toFixed(0)+'M':pop.toFixed(1)+'B'}`,{
+          layer.setStyle({weight:1.5,color:'rgba(201,162,74,0.7)'});
+          layer.bindTooltip(`<strong>${name}</strong><br>${dim.label}: <b>${score}</b><br>Pop: ${pop<1000?(pop).toFixed(0)+'M':(pop/1000).toFixed(1)+'B'}`,{
             direction:'top',sticky:true,offset:[0,-4],className:'map-tooltip'
           }).openTooltip(e.latlng);
         },
-        mouseout:function(){layer.setStyle({weight:0.5,color:'rgba(201,162,74,0.10)'});layer.unbindTooltip();},
+        mouseout:function(){layer.setStyle({weight:0.6,color:'#000'});layer.unbindTooltip();},
         click:function(e){L.DomEvent.stopPropagation(e);selectCountry(c,name);}
       });
     }
@@ -588,7 +588,7 @@ function selectCountry(c, name) {
       <div class="rp-metric">Water: <span style="color:${dimColor(w,'water')}">${w}</span></div>
       <div class="rp-metric">Poverty: <span style="color:${dimColor(p,'poverty')}">${p}</span></div>
     </div>
-    <div class="rp-pop">Population ${currentYear}: <b>${pop<1? (pop*1000).toFixed(0)+'M' : pop.toFixed(1)+'B'}</b></div>
+    <div class="rp-pop">Population ${currentYear}: <b>${pop<1000?(pop).toFixed(0)+'M':(pop/1000).toFixed(1)+'B'}</b></div>
   `;
 }
 
@@ -649,13 +649,14 @@ function updateUI() {
     if(s<50) atRiskPop+=pop;
   });
 
-  document.getElementById('kpiPop').textContent=totalPop<1?(totalPop*1000).toFixed(0)+'M':totalPop.toFixed(2)+'B';
-  document.getElementById('kpiPopSub').textContent=totalPop>8?'Peak ~9.7B mid-century':totalPop>5?'Declining from peak':totalPop>1?'Managed contraction underway':'Terminal contraction phase';
+  const totalPopB=totalPop/1000, atRiskPopB=atRiskPop/1000;
+  document.getElementById('kpiPop').textContent=totalPopB<1?(totalPopB*1000).toFixed(0)+'M':totalPopB.toFixed(1)+'B';
+  document.getElementById('kpiPopSub').textContent=totalPopB>8?'Peak ~9.7B mid-century':totalPopB>5?'Declining from peak':totalPopB>1?'Managed contraction underway':'Terminal contraction phase';
   document.getElementById('kpiLand').textContent=extremeLand+'%';
   document.getElementById('kpiLandSub').textContent='Nations in critical survivability range';
   document.getElementById('kpiSurv').textContent=avgSurv;
   document.getElementById('kpiSurvSub').textContent='Global composite (100=optimal)';
-  document.getElementById('kpiAtRisk').textContent=atRiskPop<1?(atRiskPop*1000).toFixed(0)+'M':atRiskPop.toFixed(2)+'B';
+  document.getElementById('kpiAtRisk').textContent=atRiskPopB<1?(atRiskPopB*1000).toFixed(0)+'M':atRiskPopB.toFixed(1)+'B';
   document.getElementById('kpiAtRiskSub').textContent='In stressed/critical/extreme zones';
 
   const survEl=document.getElementById('kpiSurv');
