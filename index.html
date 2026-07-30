@@ -248,11 +248,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
             <input type="range" id="yearSlider" min="2025" max="3000" value="2025" step="1" oninput="setYear(this.value)">
             <div class="time-ticks">
               <span class="time-tick active" data-yr="2025" onclick="setYear(2025)">2025</span>
-              <span class="time-tick" data-yr="2050" onclick="setYear(2050)">2050</span>
               <span class="time-tick" data-yr="2100" onclick="setYear(2100)">2100</span>
               <span class="time-tick" data-yr="2250" onclick="setYear(2250)">2250</span>
               <span class="time-tick" data-yr="2500" onclick="setYear(2500)">2500</span>
-              <span class="time-tick" data-yr="2750" onclick="setYear(2750)">2750</span>
               <span class="time-tick" data-yr="3000" onclick="setYear(3000)">3000</span>
             </div>
           </div>
@@ -394,10 +392,10 @@ const COUNTRY_REGION={
   'SLB':'Pacific Islands','TON':'Pacific Islands','TUV':'Pacific Islands','VUT':'Pacific Islands',
   'KIR':'Pacific Islands','STP':'Sub-Saharan Africa','SYC':'Sub-Saharan Africa','MCO':'Europe',
   'AND':'Europe','LIE':'Europe','MLT':'Europe','SMR':'Europe','VAT':'Europe',
-  'GUF':'South America','NCL':'Oceania','PYF':'Pacific Islands','ESH':'Sub-Saharan Africa','MAF':'Central America & Caribbean'
+  'NCL':'Oceania','PYF':'Pacific Islands','ESH':'Sub-Saharan Africa','MAF':'Central America & Caribbean'
 };
 
-const COUNTRY_POP={AFG:41,ALB:2.8,DZA:45,AGO:36,ARG:46,AUS:26,AUT:9.1,AZE:10.3,BGD:173,BEL:11.7,BEN:14,BTN:0.8,BOL:12.4,BIH:3.2,BWA:2.7,BRA:216,BRN:0.45,BGR:6.4,BFA:23,BDI:13,CPV:0.6,KHM:17,CMR:29,CAN:40,CAF:5.7,TCD:19,CHL:19.6,CHN:1408,COL:52,COM:0.85,COG:6.2,COD:105,CRI:5.2,CIV:29,HRV:3.8,CUB:11.1,CYP:1.3,CZE:10.8,DNK:5.9,DJI:1.1,DOM:11.3,ECU:18.2,EGY:112,SLV:6.4,GNQ:1.7,ERI:3.7,EST:1.3,SWZ:1.2,ETH:127,FJI:0.9,FIN:5.5,FRA:64,GAB:2.4,GMB:2.8,GEO:3.7,DEU:83,GHA:34,GRC:10.3,GRL:0.056,GTM:18,GIN:14,GNB:2.1,GUY:0.8,HTI:11.7,HND:10.6,HUN:9.6,ISL:0.39,IND:1440,IDN:279,IRN:89,IRQ:46,IRL:5.2,ISR:9.8,ITA:58.9,JAM:2.8,JPN:123,JOR:11.4,KAZ:20,KEN:55,KOR:51.7,KWT:4.3,KGZ:7.1,LAO:7.7,LVA:1.8,LBN:5.3,LSO:2.3,LBR:5.5,LBY:6.9,LTU:2.7,LUX:0.66,MDG:31,MWI:21,MYS:34,MLI:23,MRT:4.9,MEX:128,MDA:2.4,MNG:3.5,MNE:0.62,MAR:38,MOZ:34,MMR:54,NAM:2.6,NPL:31,NLD:17.7,NZL:5.3,NIC:7.1,NER:27,NGA:224,PRK:26.2,MKD:2.1,NOR:5.5,OMN:4.6,PAK:241,PSE:5.5,PAN:4.5,PNG:10.5,PRY:6.9,PER:34.2,PHL:118,POL:37.7,PRT:10.2,QAT:2.7,ROU:19,RUS:144,RWA:14,SAU:32,SEN:18.4,SRB:6.6,SLE:8.8,SGP:5.9,SVK:5.4,SVN:2.1,SOM:18,ZAF:60,SSD:11,ESP:48,LKA:22,SDN:48,SUR:0.63,SWE:10.6,CHE:8.9,SYR:23,TWN:23.4,TJK:10.2,TZA:68,THA:71.7,TLS:1.4,TGO:9.1,TTO:1.5,TUN:12.4,TUR:86,TKM:6.5,UGA:49,UKR:37,ARE:9.5,GBR:67,USA:336,URY:3.4,UZB:36,VEN:28.8,VNM:100,YEM:34,ZMB:21,ZWE:16.7};
+const COUNTRY_POP={AFG:42,ALB:2.7,DZA:46,AGO:38,ARG:47,AUS:27,AUT:9.1,AZE:10.4,BGD:174,BEL:11.7,BEN:14,BTN:0.8,BOL:12.4,BIH:3.1,BWA:2.5,BRA:217,BRN:0.45,BGR:6.4,BFA:23.5,BDI:14,CPV:0.6,KHM:17,CMR:29.5,CAN:41,CAF:5.8,TCD:20,CHL:19.8,CHN:1409,COL:52.7,COM:0.85,COG:6.3,COD:109,CRI:5.3,CIV:30,HRV:3.7,CUB:10.9,CYP:1.4,CZE:10.8,DNK:5.9,DJI:1.2,DOM:11.4,ECU:18.3,EGY:116,SLV:6.4,GNQ:1.8,ERI:3.8,EST:1.3,SWZ:1.2,ETH:129,FJI:0.9,FIN:5.6,FRA:66,GAB:2.5,GMB:2.8,GEO:3.7,DEU:83,GHA:34.8,GRC:10.2,GRL:0.056,GTM:18.5,GIN:14.4,GNB:2.2,GUY:0.82,HTI:11.9,HND:10.8,HUN:9.5,ISL:0.39,IND:1446,IDN:283,IRN:89.8,IRQ:46.5,IRL:5.3,ISR:9.9,ITA:58.7,JAM:2.8,JPN:123,JOR:11.5,KAZ:20.2,KEN:56.2,KOR:51.6,KWT:4.3,KGZ:7.2,LAO:7.8,LVA:1.8,LBN:5.2,LSO:2.3,LBR:5.6,LBY:6.9,LTU:2.7,LUX:0.67,MDG:32,MWI:21.5,MYS:34.5,MLI:24.5,MRT:5.0,MEX:129,MDA:2.4,MNG:3.5,MNE:0.62,MAR:38.2,MOZ:34.9,MMR:54.5,NAM:2.7,NPL:31.2,NLD:17.9,NZL:5.3,NIC:7.2,NER:28.5,NGA:229,PRK:26.5,MKD:2.1,NOR:5.6,OMN:4.7,PAK:245,PSE:5.5,PAN:4.6,PNG:10.6,PRY:6.9,PER:34.5,PHL:119,POL:37.5,PRT:10.2,QAT:2.7,ROU:19,RUS:144,RWA:14.5,SAU:32.2,SEN:18.5,SRB:6.6,SLE:8.9,SGP:6.0,SVK:5.4,SVN:2.1,SOM:19,ZAF:61,SSD:11.2,ESP:48.6,LKA:22.2,SDN:50,SUR:0.63,SWE:10.6,CHE:8.9,SYR:24,TWN:23.4,TJK:10.2,TZA:69,THA:71.8,TLS:1.4,TGO:9.2,TTO:1.5,TUN:12.5,TUR:86,TKM:6.6,UGA:50,UKR:37,ARE:9.6,GBR:68,USA:340,URY:3.4,UZB:37,VEN:29,VNM:100,YEM:35.5,ZMB:21.5,ZWE:17};
 
 function countryRiskFingerprint(iso,lat,lng) {
   const region = COUNTRY_REGION[iso] || 'Sub-Saharan Africa';
@@ -507,18 +505,22 @@ let countryRiskMap={};
 function buildCountryIndex() {
   if(!countriesData) return;
   countriesData.features.forEach(f=>{
-    const iso=f.properties.ISO_A3||f.properties.ADM0_A3||f.properties.iso_a3||'';
-    let lat=0,lng=0;
-    if(f.properties.LAT) lat=f.properties.LAT;
-    else if(f.geometry&&f.geometry.coordinates) {
-      try {
-        const coords=f.geometry.coordinates;
-        let all=[];
-        function flatten(c){if(typeof c[0]==='number'){all.push(c);return;}c.forEach(flatten);}
-        flatten(coords);
-        if(all.length>0){lat=all.reduce((a,c)=>a+c[1],0)/all.length;lng=all.reduce((a,c)=>a+c[0],0)/all.length;}
-      } catch(e){}
+    const name=f.properties.name||'';
+    let iso=(f.properties['ISO3166-1-Alpha-3']||'').trim();
+    // Fix -99 entries for known real countries
+    if(iso==='-99'||!iso) {
+      const NAME_OVERRIDES={'France':'FRA','Norway':'NOR','Kosovo':'XKX','Somaliland':'SOM'};
+      iso=NAME_OVERRIDES[name]||'';
     }
+    // Calculate centroid from geometry
+    let lat=0,lng=0;
+    try {
+      const coords=f.geometry.coordinates;
+      let all=[];
+      function flatten(c){if(typeof c[0]==='number'){all.push(c);return;}c.forEach(flatten);}
+      flatten(coords);
+      if(all.length>0){lat=all.reduce((a,c)=>a+c[1],0)/all.length;lng=all.reduce((a,c)=>a+c[0],0)/all.length;}
+    } catch(e){}
     if(iso&&iso.length===3) {
       countryRiskMap[iso]=countryRiskFingerprint(iso,lat,lng);
     }
@@ -538,32 +540,35 @@ function renderChoropleth() {
 
   L.geoJSON(countriesData,{
     style:function(feature) {
-      const iso=feature.properties.ISO_A3||feature.properties.ADM0_A3||'';
+      const name=feature.properties.name||'';
+      let iso=(feature.properties['ISO3166-1-Alpha-3']||'').trim();
+      if(iso==='-99'||!iso){const OVR={'France':'FRA','Norway':'NOR','Kosovo':'XKX','Somaliland':'SOM'};iso=OVR[name]||'';}
       const c=countryRiskMap[iso];
-      if(!c) return {fillColor:'#1a2a3a',color:'rgba(201,162,74,0.1)',weight:0.5,fillOpacity:0.4};
+      if(!c) return {fillColor:'#121a24',color:'rgba(255,255,255,0.04)',weight:0.4,fillOpacity:0.35};
       const score=valAtYear(c,currentDim,currentYear);
       return {
         fillColor:dimColor(score,currentDim),
-        color:'rgba(201,162,74,0.12)',
-        weight:0.6,
-        fillOpacity:0.82
+        color:'rgba(201,162,74,0.10)',
+        weight:0.5,
+        fillOpacity:0.84
       };
     },
     onEachFeature:function(feature,layer) {
-      const iso=feature.properties.ISO_A3||feature.properties.ADM0_A3||'';
+      const name=feature.properties.name||'';
+      let iso=(feature.properties['ISO3166-1-Alpha-3']||'').trim();
+      if(iso==='-99'||!iso){const OVR={'France':'FRA','Norway':'NOR','Kosovo':'XKX','Somaliland':'SOM'};iso=OVR[name]||'';}
       const c=countryRiskMap[iso];
       if(!c) return;
-      const name=feature.properties.ADMIN||feature.properties.name||iso;
       layer.on({
         mouseover:function(e) {
           const score=valAtYear(c,currentDim,currentYear);
-          const dim=DIMS[currentDim];
-          layer.setStyle({weight:1.8,color:'rgba(201,162,74,0.7)'});
-          layer.bindTooltip(`<strong>${name}</strong><br>${dim.label}: <b>${score}</b>`,{
+          const dim=DIMS[currentDim]; const pop=popAtYear(c,currentYear);
+          layer.setStyle({weight:1.5,color:'rgba(201,162,74,0.6)'});
+          layer.bindTooltip(`<strong>${name}</strong><br>${dim.label}: <b>${score}</b><br>Pop: ${pop<1?(pop*1000).toFixed(0)+'M':pop.toFixed(1)+'B'}`,{
             direction:'top',sticky:true,offset:[0,-4],className:'map-tooltip'
           }).openTooltip(e.latlng);
         },
-        mouseout:function(){layer.setStyle({weight:0.6,color:'rgba(201,162,74,0.12)'});layer.unbindTooltip();},
+        mouseout:function(){layer.setStyle({weight:0.5,color:'rgba(201,162,74,0.10)'});layer.unbindTooltip();},
         click:function(e){L.DomEvent.stopPropagation(e);selectCountry(c,name);}
       });
     }
