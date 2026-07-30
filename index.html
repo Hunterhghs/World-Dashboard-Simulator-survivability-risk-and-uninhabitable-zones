@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Survivability Risk Simulator — H Heuristics</title>
+<meta name="description" content="Interactive world map dashboard simulating survivability risk and uninhabitable zones from rising temperatures, pollution, and poverty. Multi-century simulation 2025–2100 by H Heuristics.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --bg-deep:#080e14; --panel:#0f1a26; --panel-raised:#131f2e;
+  --gold:#c9a24a; --gold-dim:#8f7638; --gold-bright:#e0bb5c;
+  --rust:#c75a3f; --rust-light:#e07a5c; --amber:#d4983c;
+  --teal:#4a8f8f; --cobalt:#4a7ab5;
+  --text:#e9e4d8; --text-dim:#93a6b0; --text-muted:#54687a;
+  --border:rgba(201,162,74,0.14); --border-strong:rgba(201,162,74,0.28);
+  --transition:200ms cubic-bezier(0.22,1,0.36,1);
+  --sidebar-w:380px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'IBM Plex Mono',monospace;color:var(--text);
+  background:var(--bg-deep);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── MAP CONTAINER ── */
+#map{position:fixed;inset:0;z-index:1;background:var(--bg-deep);}
+.leaflet-container{background:var(--bg-deep);font-family:'IBM Plex Mono',monospace;}
+.leaflet-control-zoom a{
+  background:var(--panel) !important;color:var(--text) !important;
+  border:1px solid var(--border) !important;
+}
+.leaflet-control-zoom a:hover{background:var(--panel-raised) !important;color:var(--gold) !important;}
+.leaflet-control-attribution{background:rgba(8,14,20,0.85) !important;color:var(--text-muted) !important;font-size:9px !important;padding:2px 8px !important;}
+.leaflet-control-attribution a{color:var(--gold-dim) !important;}
+
+/* ── HEADER BAR ── */
+.header-bar{
+  position:fixed;top:0;left:0;right:0;z-index:1000;height:44px;
+  background:rgba(8,14,20,0.94);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border-strong);
+  display:flex;align-items:center;padding:0 18px;gap:14px;
+}
+.header-brand{
+  font-family:'Source Serif 4',serif;font-weight:600;font-size:13.5px;
+  color:var(--gold);white-space:nowrap;display:flex;align-items:center;gap:8px;
+}
+.header-brand .dot{width:6px;height:6px;background:var(--gold);border-radius:50%;flex:none;}
+.header-divider{width:1px;height:18px;background:var(--border-strong);}
+.header-title{font-size:11px;color:var(--text-dim);letter-spacing:0.05em;white-space:nowrap;}
+.header-title strong{color:var(--text);font-weight:600;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.hdr-badge{
+  font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-muted);border:1px solid var(--border);padding:3px 10px;border-radius:3px;
+}
+.hdr-badge.live{color:var(--rust-light);border-color:rgba(199,90,63,0.4);}
+.hdr-badge.live::before{content:"";display:inline-block;width:6px;height:6px;background:var(--rust-light);border-radius:50%;margin-right:6px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  position:fixed;top:44px;left:0;bottom:0;z-index:999;width:var(--sidebar-w);
+  background:linear-gradient(180deg,rgba(15,26,38,0.97) 0%,rgba(8,14,20,0.98) 100%);
+  backdrop-filter:blur(16px);border-right:1px solid var(--border-strong);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:transform var(--transition);
+}
+.sidebar.collapsed{transform:translateX(calc(-1 * var(--sidebar-w)));}
+
+.sidebar-toggle{
+  position:fixed;top:50%;left:var(--sidebar-w);z-index:1001;
+  transform:translateY(-50%);
+  width:22px;height:48px;background:var(--panel);border:1px solid var(--border-strong);
+  border-left:none;border-radius:0 6px 6px 0;cursor:pointer;color:var(--gold);
+  font-size:11px;display:flex;align-items:center;justify-content:center;
+  transition:left var(--transition);
+}
+.sidebar.collapsed ~ .sidebar-toggle{left:0;border-left:1px solid var(--border-strong);border-radius:0 6px 6px 0;}
+.sidebar-toggle:hover{background:var(--panel-raised);color:var(--gold-bright);}
+
+.sidebar-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 18px 20px;}
+.sidebar-scroll::-webkit-scrollbar{width:4px;}
+.sidebar-scroll::-webkit-scrollbar-track{background:transparent;}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px;}
+
+/* ── SIDEBAR SECTIONS ── */
+.sb-section{margin-bottom:20px;}
+.sb-label{
+  font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:10px;font-weight:600;
+  display:flex;align-items:center;gap:8px;
+}
+.sb-label::after{content:"";flex:1;height:1px;background:var(--border);}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.kpi-card{
+  background:var(--panel);border:1px solid var(--border);padding:14px;
+  transition:background var(--transition);
+}
+.kpi-card .kpi-label{font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+.kpi-card .kpi-value{
+  font-family:'Source Serif 4',serif;font-size:26px;font-weight:600;color:var(--gold);line-height:1;
+}
+.kpi-card .kpi-value.danger{color:var(--rust);}
+.kpi-card .kpi-sub{font-size:10px;color:var(--text-dim);margin-top:4px;line-height:1.4;}
+
+/* ── DIMENSION TOGGLES ── */
+.dim-toggles{display:flex;flex-direction:column;gap:5px;}
+.dim-toggle{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;
+  background:var(--panel);border:1px solid var(--border);cursor:pointer;
+  transition:all var(--transition);border-radius:2px;
+}
+.dim-toggle:hover{border-color:var(--border-strong);}
+.dim-toggle.active{border-color:var(--gold-dim);background:var(--panel-raised);}
+.dim-toggle .dim-swatch{width:10px;height:10px;border-radius:2px;flex:none;}
+.dim-toggle .dim-name{flex:1;font-size:11px;color:var(--text-dim);font-weight:500;}
+.dim-toggle.active .dim-name{color:var(--text);}
+.dim-toggle .dim-score{font-size:10px;color:var(--text-muted);font-weight:600;}
+.dim-toggle.active .dim-score{color:var(--gold);}
+
+/* ── TIME SLIDER ── */
+.time-section{background:var(--panel);border:1px solid var(--border);padding:14px 16px;}
+.time-label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.time-label{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);}
+.time-year{
+  font-family:'Source Serif 4',serif;font-size:22px;font-weight:700;color:var(--gold-bright);line-height:1;
+}
+.time-controls{display:flex;align-items:center;gap:10px;}
+.time-btn{
+  width:28px;height:28px;border-radius:50%;border:1px solid var(--border-strong);
+  background:var(--bg-deep);color:var(--gold);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:11px;
+  transition:all var(--transition);flex:none;
+}
+.time-btn:hover{background:var(--panel);color:var(--gold-bright);border-color:var(--gold);}
+.time-btn.play-btn{width:34px;height:34px;font-size:14px;}
+.time-slider-wrap{flex:1;position:relative;}
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:4px;background:var(--border-strong);
+  border-radius:2px;outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--gold);cursor:pointer;border:2px solid var(--bg-deep);
+  box-shadow:0 0 10px rgba(201,162,74,0.3);
+}
+.time-ticks{display:flex;justify-content:space-between;margin-top:4px;}
+.time-tick{font-size:8px;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:2px;}
+.time-tick:hover{color:var(--text-dim);}
+.time-tick.active{color:var(--gold);font-weight:600;}
+
+.era-badge{
+  display:inline-block;font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;
+  padding:3px 10px;border-radius:3px;margin-top:6px;font-weight:600;
+}
+.era-peak{color:var(--rust-light);border:1px solid rgba(199,90,63,0.4);background:rgba(199,90,63,0.08);}
+.era-managed{color:var(--amber);border:1px solid rgba(212,152,60,0.4);background:rgba(212,152,60,0.08);}
+.era-terminal{color:var(--teal);border:1px solid rgba(74,143,143,0.4);background:rgba(74,143,143,0.08);}
+
+/* ── SELECTED REGION ── */
+.region-panel{background:var(--panel);border:1px solid var(--border);padding:14px 16px;min-height:60px;}
+.region-panel .rp-placeholder{font-size:11px;color:var(--text-muted);text-align:center;padding:16px 0;font-style:italic;}
+.region-panel .rp-name{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.region-panel .rp-metrics{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.region-panel .rp-metric{font-size:10px;color:var(--text-dim);}
+.region-panel .rp-metric span{color:var(--gold);font-weight:600;}
+
+/* ── MAP LEGEND ── */
+.map-legend{
+  position:fixed;bottom:24px;right:24px;z-index:1000;
+  background:rgba(15,26,38,0.94);border:1px solid var(--border-strong);
+  padding:12px 16px;border-radius:4px;backdrop-filter:blur(8px);
+}
+.legend-title{font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+.legend-gradient{display:flex;align-items:center;gap:0;height:10px;margin-bottom:4px;}
+.legend-step{height:10px;flex:1;}
+.legend-labels{display:flex;justify-content:space-between;font-size:8px;color:var(--text-muted);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  :root{--sidebar-w:320px;}
+  .sidebar.collapsed{transform:translateX(calc(-1 * var(--sidebar-w)));}
+}
+@media(max-width:640px){
+  :root{--sidebar-w:100vw;}
+  .sidebar{width:100vw;}
+  .sidebar.collapsed{transform:translateX(-100vw);}
+  .sidebar-toggle{left:100vw;}
+  .sidebar.collapsed ~ .sidebar-toggle{left:0;}
+  .header-title{display:none;}
+  .map-legend{bottom:12px;right:8px;padding:8px 12px;}
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ HEADER ════════════ -->
+<div class="header-bar">
+  <div class="header-brand"><span class="dot"></span>H Heuristics</div>
+  <div class="header-divider"></div>
+  <div class="header-title">World Survivability <strong>Risk Simulator</strong></div>
+  <div class="header-right">
+    <span class="hdr-badge live">LIVE SIMULATION</span>
+    <span class="hdr-badge" id="eraBadge" style="color:var(--rust-light);border-color:rgba(199,90,63,0.4);">ERA I: PEAK STRESS</span>
+  </div>
+</div>
+
+<!-- ════════════ SIDEBAR ════════════ -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-scroll" id="sidebarScroll">
+    <!-- KPI Section -->
+    <div class="sb-section">
+      <div class="sb-label">Key Indicators</div>
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card"><div class="kpi-label">Uninhabitable Land</div><div class="kpi-value danger" id="kpiLand">8.2%</div><div class="kpi-sub" id="kpiLandSub">Global land area >35°C WBGT</div></div>
+        <div class="kpi-card"><div class="kpi-label">Population at Risk</div><div class="kpi-value danger" id="kpiPop">3.2B</div><div class="kpi-sub" id="kpiPopSub">1+ month extreme heat/year</div></div>
+        <div class="kpi-card"><div class="kpi-label">Toxicity Index</div><div class="kpi-value" id="kpiTox">64.8</div><div class="kpi-sub" id="kpiToxSub">PM2.5 + water + chemical composite</div></div>
+        <div class="kpi-card"><div class="kpi-label">Survivability Score</div><div class="kpi-value" id="kpiSurv">71.3</div><div class="kpi-sub" id="kpiSurvSub">Global composite (100 = optimal)</div></div>
+      </div>
+    </div>
+
+    <!-- Risk Dimensions -->
+    <div class="sb-section">
+      <div class="sb-label">Risk Dimensions</div>
+      <div class="dim-toggles" id="dimToggles">
+        <div class="dim-toggle active" data-dim="heat" onclick="setDimension('heat',this)">
+          <span class="dim-swatch" style="background:var(--rust-light)"></span>
+          <span class="dim-name">Wet-Bulb Temperature</span>
+          <span class="dim-score">82</span>
+        </div>
+        <div class="dim-toggle" data-dim="air" onclick="setDimension('air',this)">
+          <span class="dim-swatch" style="background:#b8a05e"></span>
+          <span class="dim-name">Air Pollution (PM2.5)</span>
+          <span class="dim-score">74</span>
+        </div>
+        <div class="dim-toggle" data-dim="water" onclick="setDimension('water',this)">
+          <span class="dim-swatch" style="background:var(--teal)"></span>
+          <span class="dim-name">Water Stress & Contamination</span>
+          <span class="dim-score">68</span>
+        </div>
+        <div class="dim-toggle" data-dim="poverty" onclick="setDimension('poverty',this)">
+          <span class="dim-swatch" style="background:var(--amber)"></span>
+          <span class="dim-name">Poverty & Adaptive Capacity</span>
+          <span class="dim-score">71</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Slider -->
+    <div class="sb-section">
+      <div class="time-section">
+        <div class="time-label-row">
+          <span class="time-label">Simulation Year</span>
+          <span class="time-year" id="timeYear">2025</span>
+        </div>
+        <div class="time-controls">
+          <button class="time-btn" onclick="stepYear(-5)" title="-5 years">◀◀</button>
+          <button class="time-btn" onclick="stepYear(-1)" title="-1 year">◀</button>
+          <button class="time-btn play-btn" id="playBtn" onclick="togglePlay()" title="Play/Pause">▶</button>
+          <div class="time-slider-wrap">
+            <input type="range" id="yearSlider" min="2025" max="2100" value="2025" step="1" oninput="setYear(this.value)">
+            <div class="time-ticks">
+              <span class="time-tick active" data-yr="2025" onclick="setYear(2025)">2025</span>
+              <span class="time-tick" data-yr="2050" onclick="setYear(2050)">2050</span>
+              <span class="time-tick" data-yr="2075" onclick="setYear(2075)">2075</span>
+              <span class="time-tick" data-yr="2100" onclick="setYear(2100)">2100</span>
+            </div>
+          </div>
+          <button class="time-btn" onclick="stepYear(1)" title="+1 year">▶</button>
+          <button class="time-btn" onclick="stepYear(5)" title="+5 years">▶▶</button>
+        </div>
+        <div class="era-badge era-peak" id="eraLabel">ERA I: PEAK STRESS & INFLECTION (2025–2100)</div>
+      </div>
+    </div>
+
+    <!-- Selected Region -->
+    <div class="sb-section">
+      <div class="sb-label">Selected Region</div>
+      <div class="region-panel" id="regionPanel">
+        <div class="rp-placeholder">Click any point on the map<br>to inspect risk profile</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar toggle button -->
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">◀</button>
+
+<!-- ════════════ MAP ════════════ -->
+<div id="map"></div>
+
+<!-- ════════════ MAP LEGEND ════════════ -->
+<div class="map-legend" id="mapLegend">
+  <div class="legend-title" id="legendTitle">Wet-Bulb Temperature Risk</div>
+  <div class="legend-gradient" id="legendGradient"></div>
+  <div class="legend-labels"><span>Low Risk</span><span>Moderate</span><span>High</span><span>Extreme</span></div>
+</div>
+
+<!-- ════════════ SCRIPTS ════════════ -->
+<script>
+/* ═══════════════════════════════════════════════════
+   WORLD SURVIVABILITY RISK SIMULATOR
+   H Heuristics LLC — July 2025
+   ═══════════════════════════════════════════════════ */
+
+// ── GLOBAL STATE ──
+let currentYear = 2025;
+let currentDim = 'heat';
+let isPlaying = false;
+let playInterval = null;
+let sidebarOpen = true;
+let map, heatLayer, pointLayer, riskPoints = [];
+
+// ── DIMENSION CONFIG ──
+const DIMS = {
+  heat:  { label:'Wet-Bulb Temperature Risk',   unit:'°C WBGT exceedance days/yr', colors:['#2d5a3d','#7a9a3d','#c9a24a','#c75a3f','#8b2020'], baseScore:82 },
+  air:   { label:'Air Pollution (PM2.5)',        unit:'µg/m³ annual mean',         colors:['#2d4a5a','#4a7a6a','#b8a05e','#c97a3a','#8b4020'], baseScore:74 },
+  water: { label:'Water Stress & Contamination', unit:'withdrawal-to-availability %',colors:['#2d4a6a','#4a6a8a','#4a8f8f','#6a9a8a','#3a5a4a'], baseScore:68 },
+  poverty:{label:'Poverty & Adaptive Capacity',  unit:'multidimensional vulnerability',colors:['#4a3a5a','#6a5a7a','#d4983c','#c97a3a','#8b3020'], baseScore:71 }
+};
+
+// ── GLOBAL RISK DATA POINTS ──
+// Each point: [lat, lng, region, country, heat2025, heat2050, heat2075, heat2100, air2025, ..., water2025..., poverty2025...]
+// Scores 0-100 (higher = worse risk)
+const RAW_DATA = [
+//  lat     lng     region          country           h25 h50 h75 h100 a25 a50 a75 a100 w25 w50 w75 w100 p25 p50 p75 p100
+  [ 6.5,   3.4,  'SSA',        'Lagos, Nigeria',      78,90,96,99,  85,92,96,99,  62,78,88,95,  80,88,94,98],
+  [ 5.6,  -0.2,  'SSA',        'Accra, Ghana',        75,88,94,98,  72,82,90,96,  58,74,86,93,  72,82,90,96],
+  [-1.3,  36.8,  'SSA',        'Nairobi, Kenya',      62,78,88,95,  58,70,82,91,  70,82,90,95,  68,78,88,94],
+  [ 9.0,   7.5,  'SSA',        'Abuja, Nigeria',      76,89,95,99,  80,90,95,98,  64,78,89,95,  78,87,93,97],
+  [ 14.7, -17.5, 'SSA',        'Dakar, Senegal',      70,84,92,97,  55,68,80,90,  60,74,85,92,  65,76,86,93],
+  [-4.3,  15.3,  'SSA',        'Kinshasa, DRC',       74,87,94,98,  78,88,94,98,  58,72,85,93,  82,90,95,99],
+  [-25.9, 28.2,  'SSA',        'Johannesburg, SA',    48,64,78,88,  52,65,76,86,  72,82,90,95,  52,64,76,86],
+  [ 9.0,  38.7,  'SSA',        'Addis Ababa, Ethiopia',55,70,82,92,  50,64,76,86,  62,74,85,92,  60,74,84,92],
+  [ 0.3,  32.6,  'SSA',        'Kampala, Uganda',     60,75,86,94,  55,68,80,90,  58,72,84,92,  62,75,86,93],
+
+  [28.6,  77.2,  'SAsia',      'Delhi, India',        80,93,98,100, 90,96,99,100, 78,90,96,100, 74,84,92,97],
+  [19.1,  72.9,  'SAsia',      'Mumbai, India',       78,91,97,100, 80,90,96,99,  72,85,93,98,  70,82,91,96],
+  [22.6,  88.4,  'SAsia',      'Kolkata, India',      82,94,98,100, 85,94,98,100, 75,88,95,99,  76,86,93,98],
+  [23.8,  90.4,  'SAsia',      'Dhaka, Bangladesh',   86,96,99,100, 88,96,99,100, 80,92,97,100, 82,92,97,100],
+  [24.9,  67.1,  'SAsia',      'Karachi, Pakistan',   84,95,99,100, 82,92,97,99,  82,94,98,100, 74,85,92,97],
+  [31.5,  74.3,  'SAsia',      'Lahore, Pakistan',    82,94,98,100, 88,96,99,100, 78,92,97,100, 72,83,91,96],
+  [27.7,  85.3,  'SAsia',      'Kathmandu, Nepal',    52,68,80,90,  55,68,80,90,  50,64,78,88,  58,70,82,91],
+  [ 6.9,  79.9,  'SAsia',      'Colombo, Sri Lanka',  74,87,94,98,  58,72,84,92,  55,70,82,91,  62,74,85,93],
+
+  [13.8, 100.5,  'SEAsia',     'Bangkok, Thailand',   82,94,98,100, 78,90,96,99,  65,80,90,96,  60,74,85,93],
+  [10.8, 106.6,  'SEAsia',     'Ho Chi Minh, Vietnam', 76,90,96,99,  72,85,93,98,  58,74,86,94,  55,70,82,91],
+  [14.6, 121.0,  'SEAsia',     'Manila, Philippines',  80,93,98,100, 74,87,94,98,  55,72,84,93,  64,76,87,94],
+  [-6.2, 106.8,  'SEAsia',     'Jakarta, Indonesia',   80,92,97,100, 82,92,97,99,  58,74,86,94,  60,74,85,93],
+  [ 3.1, 101.7,  'SEAsia',     'Kuala Lumpur, MY',     72,86,93,98,  65,78,88,94,  48,64,78,88,  50,64,78,88],
+  [ 1.3, 103.8,  'SEAsia',     'Singapore',            68,82,91,96,  55,68,80,90,  35,50,65,78,  30,44,60,74],
+  [21.0, 105.8,  'SEAsia',     'Hanoi, Vietnam',       72,86,93,98,  78,90,95,99,  55,70,83,92,  52,66,78,89],
+
+  [30.0,  31.2,  'MENA',       'Cairo, Egypt',         78,90,96,99,  72,84,92,97,  80,92,98,100, 58,72,84,92],
+  [24.7,  46.7,  'MENA',       'Riyadh, Saudi Arabia', 90,98,100,100,68,80,90,96,  88,98,100,100,45,58,72,83],
+  [25.3,  55.3,  'MENA',       'Dubai, UAE',           88,97,100,100,65,78,88,94,  86,96,100,100,38,52,66,79],
+  [33.9,  35.5,  'MENA',       'Beirut, Lebanon',      62,76,86,94,  58,70,82,92,  55,70,82,91,  60,72,83,91],
+  [31.9,  35.9,  'MENA',       'Amman, Jordan',        58,72,83,92,  52,65,78,88,  72,84,92,97,  48,60,73,84],
+  [36.8,  10.2,  'MENA',       'Tunis, Tunisia',       58,72,84,93,  50,62,74,85,  60,74,85,92,  52,64,76,86],
+  [33.6,  -7.6,  'MENA',       'Casablanca, Morocco',  48,62,74,85,  45,58,70,82,  52,65,78,88,  45,56,70,81],
+
+  [35.7, 139.7,  'EAsia',      'Tokyo, Japan',         42,56,70,82,  38,50,62,74,  28,40,54,66,  18,28,40,52],
+  [39.9, 116.4,  'EAsia',      'Beijing, China',       52,66,78,88,  78,88,94,98,  58,72,84,92,  35,46,58,70],
+  [31.2, 121.5,  'EAsia',      'Shanghai, China',      55,70,82,92,  72,84,92,97,  42,56,70,82,  30,40,52,64],
+  [37.5, 127.0,  'EAsia',      'Seoul, South Korea',   40,54,66,78,  55,68,80,90,  25,36,48,60,  15,24,34,46],
+  [22.3, 114.2,  'EAsia',      'Hong Kong',            60,74,85,94,  62,75,86,94,  30,42,55,68,  22,32,44,56],
+
+  [40.7,  -74.0, 'NAmerica',   'New York, USA',        35,48,60,72,  38,50,62,74,  22,32,44,56,  18,26,36,48],
+  [34.0, -118.2, 'NAmerica',   'Los Angeles, USA',     42,55,68,80,  48,60,72,83,  35,46,58,70,  22,32,44,56],
+  [41.9,  -87.6, 'NAmerica',   'Chicago, USA',         32,44,56,68,  40,52,64,76,  18,28,38,50,  20,28,38,50],
+  [29.8,  -95.4, 'NAmerica',   'Houston, USA',         60,74,85,94,  50,62,74,85,  38,50,62,74,  28,38,50,62],
+  [25.8,  -80.2, 'NAmerica',   'Miami, USA',           68,82,92,98,  42,55,67,78,  30,42,54,66,  24,34,46,58],
+  [19.4,  -99.1, 'NAmerica',   'Mexico City, Mexico',  55,70,82,92,  72,84,92,97,  62,74,85,93,  52,64,76,86],
+
+  [48.9,   2.3,  'Europe',     'Paris, France',        28,38,50,62,  35,46,58,70,  18,26,36,48,  12,18,26,36],
+  [51.5,  -0.1,  'Europe',     'London, UK',           24,34,45,56,  38,49,60,72,  15,22,32,44,  14,20,28,38],
+  [52.5,  13.4,  'Europe',     'Berlin, Germany',      28,38,50,62,  38,49,60,72,  18,26,36,48,  12,18,26,36],
+  [41.9,  12.5,  'Europe',     'Rome, Italy',          44,56,68,80,  42,54,66,78,  28,38,50,62,  20,28,38,50],
+  [40.4,  -3.7,  'Europe',     'Madrid, Spain',        48,60,72,83,  38,49,60,72,  35,46,58,70,  22,30,40,52],
+
+  [-33.9, 151.2, 'Oceania',    'Sydney, Australia',    45,58,70,82,  28,38,50,62,  30,42,54,66,  15,22,30,40],
+  [-37.8, 145.0, 'Oceania',    'Melbourne, Australia',  42,55,68,80,  25,34,45,56,  28,38,50,62,  14,20,28,38],
+
+  [-23.5, -46.6, 'SAmerica',   'São Paulo, Brazil',    55,70,82,92,  52,65,78,88,  38,50,63,75,  48,60,72,83],
+  [-22.9, -43.2, 'SAmerica',   'Rio de Janeiro, Brazil',60,74,85,94,  48,60,73,84,  35,48,60,73,  45,56,68,79],
+  [ 4.7,  -74.1, 'SAmerica',   'Bogotá, Colombia',     48,62,74,85,  55,68,80,90,  32,44,56,68,  42,54,66,77],
+  [-12.0, -77.0, 'SAmerica',   'Lima, Peru',           50,64,76,87,  58,70,82,91,  45,58,70,82,  44,55,67,78]
+];
+
+// ── PARSE DATA ──
+function parseData() {
+  return RAW_DATA.map(d => ({
+    lat:d[0], lng:d[1], region:d[2], country:d[3],
+    heat:[d[4],d[5],d[6],d[7]],
+    air:[d[8],d[9],d[10],d[11]],
+    water:[d[12],d[13],d[14],d[15]],
+    poverty:[d[16],d[17],d[18],d[19]]
+  }));
+}
+
+riskPoints = parseData();
+
+// ── INTERPOLATION ──
+function yearToIndex(year) {
+  if (year <= 2025) return 0;
+  if (year >= 2100) return 3;
+  // 2025->0, 2050->1, 2075->2, 2100->3
+  const t = (year - 2025) / 75; // 0 to 1
+  return t * 3; // 0 to 3
+}
+
+function getValueAtYear(values, year) {
+  const idx = yearToIndex(year);
+  const lo = Math.floor(idx);
+  const hi = Math.min(lo + 1, 3);
+  const frac = idx - lo;
+  return Math.round(values[lo] + (values[hi] - values[lo]) * frac);
+}
+
+function getCompositeScore(point, year) {
+  const h = getValueAtYear(point.heat, year);
+  const a = getValueAtYear(point.air, year);
+  const w = getValueAtYear(point.water, year);
+  const p = getValueAtYear(point.poverty, year);
+  return Math.round((h * 0.35 + a * 0.25 + w * 0.20 + p * 0.20));
+}
+
+// ── COLOR SCALES ──
+function dimColor(score, dim) {
+  const colors = DIMS[dim].colors;
+  if (score < 30) return colors[0];
+  if (score < 50) return colors[1];
+  if (score < 70) return colors[2];
+  if (score < 85) return colors[3];
+  return colors[4];
+}
+
+function compositeColor(score) {
+  if (score < 30) return '#2d5a3d';
+  if (score < 50) return '#7a9a3d';
+  if (score < 65) return '#c9a24a';
+  if (score < 80) return '#c75a3f';
+  return '#8b2020';
+}
+
+function radiusForScore(score) {
+  if (score < 30) return 6;
+  if (score < 50) return 8;
+  if (score < 65) return 10;
+  if (score < 80) return 13;
+  return 16;
+}
+
+// ── MAP INIT ──
+function initMap() {
+  map = L.map('map', {
+    center: [20, 10],
+    zoom: 2.5,
+    minZoom: 2,
+    maxZoom: 10,
+    zoomControl: true,
+    attributionControl: true
+  });
+
+  // Dark tile layer (CartoDB dark)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a> | H Heuristics LLC',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+
+  // Point layer group
+  pointLayer = L.layerGroup().addTo(map);
+
+  // Draw initial points
+  renderPoints();
+
+  // Map click to deselect
+  map.on('click', function(e) {
+    if (e.originalEvent.target === map.getContainer()) {
+      clearRegion();
+    }
+  });
+}
+
+// ── RENDER POINTS ──
+function renderPoints() {
+  pointLayer.clearLayers();
+
+  riskPoints.forEach(p => {
+    const score = getValueAtYear(p[currentDim], currentYear);
+    const color = dimColor(score, currentDim);
+    const radius = radiusForScore(score);
+    const composite = getCompositeScore(p, currentYear);
+
+    const marker = L.circleMarker([p.lat, p.lng], {
+      radius: radius,
+      fillColor: color,
+      color: 'rgba(233,228,216,0.4)',
+      weight: 0.8,
+      opacity: 0.7,
+      fillOpacity: 0.75
+    });
+
+    marker.bindTooltip(
+      `<strong>${p.country}</strong><br>` +
+      `${DIMS[currentDim].label}: <b style="color:${color}">${score}/100</b><br>` +
+      `Composite: ${composite}/100`,
+      { direction:'top', offset:[0,-radius-2], className:'map-tooltip' }
+    );
+
+    marker.on('click', function(e) {
+      L.DomEvent.stopPropagation(e);
+      selectRegion(p);
+    });
+
+    marker.addTo(pointLayer);
+  });
+}
+
+// ── TOOLTIP STYLING ──
+const tooltipStyle = document.createElement('style');
+tooltipStyle.textContent = `
+  .map-tooltip{
+    background:rgba(15,26,38,0.96) !important;
+    border:1px solid rgba(201,162,74,0.4) !important;
+    border-radius:3px !important;
+    padding:6px 10px !important;
+    font-family:'IBM Plex Mono',monospace !important;
+    font-size:10px !important;
+    color:#e9e4d8 !important;
+    box-shadow:none !important;
+    line-height:1.5 !important;
+  }
+  .map-tooltip::before{border-top-color:rgba(201,162,74,0.4) !important;}
+`;
+document.head.appendChild(tooltipStyle);
+
+// ── SELECT REGION ──
+function selectRegion(point) {
+  const panel = document.getElementById('regionPanel');
+  const h = getValueAtYear(point.heat, currentYear);
+  const a = getValueAtYear(point.air, currentYear);
+  const w = getValueAtYear(point.water, currentYear);
+  const p = getValueAtYear(point.poverty, currentYear);
+  const comp = getCompositeScore(point, currentYear);
+
+  panel.innerHTML = `
+    <div class="rp-name">${point.country}</div>
+    <div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">${point.region} · Composite: <b style="color:${compositeColor(comp)}">${comp}/100</b></div>
+    <div class="rp-metrics">
+      <div class="rp-metric">Heat: <span style="color:${dimColor(h,'heat')}">${h}</span></div>
+      <div class="rp-metric">Air: <span style="color:${dimColor(a,'air')}">${a}</span></div>
+      <div class="rp-metric">Water: <span style="color:${dimColor(w,'water')}">${w}</span></div>
+      <div class="rp-metric">Poverty: <span style="color:${dimColor(p,'poverty')}">${p}</span></div>
+    </div>
+  `;
+}
+
+function clearRegion() {
+  document.getElementById('regionPanel').innerHTML =
+    '<div class="rp-placeholder">Click any point on the map<br>to inspect risk profile</div>';
+}
+
+// ── UPDATE ALL UI ──
+function updateUI() {
+  // Year display
+  document.getElementById('timeYear').textContent = currentYear;
+  document.getElementById('yearSlider').value = currentYear;
+
+  // Time ticks
+  document.querySelectorAll('.time-tick').forEach(t => {
+    t.classList.toggle('active', parseInt(t.dataset.yr) === currentYear);
+  });
+
+  // Era badge
+  const eraBadge = document.getElementById('eraBadge');
+  const eraLabel = document.getElementById('eraLabel');
+  if (currentYear <= 2100) {
+    eraBadge.textContent = 'ERA I: PEAK STRESS';
+    eraBadge.style.color = 'var(--rust-light)';
+    eraBadge.style.borderColor = 'rgba(199,90,63,0.4)';
+    eraLabel.textContent = 'ERA I: PEAK STRESS & INFLECTION (2025–2100)';
+    eraLabel.className = 'era-badge era-peak';
+  }
+
+  // KPI calculations
+  // Simulated KPI metrics (trend-aligned with multi-century trajectory)
+  const landPct = (8.2 + (currentYear - 2025) * 0.32).toFixed(1);
+  const popAtRisk = (3.2 + (currentYear - 2025) * 0.064).toFixed(1);
+  const toxicityScore = (64.8 + (currentYear - 2025) * 0.24).toFixed(1);
+  const survScore = Math.max(5, 71.3 - (currentYear - 2025) * 0.40).toFixed(1);
+
+  document.getElementById('kpiLand').textContent = landPct + '%';
+  document.getElementById('kpiLandSub').textContent = `Global land area >35°C WBGT`;
+  document.getElementById('kpiPop').textContent = popAtRisk + 'B';
+  document.getElementById('kpiPopSub').textContent = '1+ month extreme heat/year';
+  document.getElementById('kpiTox').textContent = toxicityScore;
+  document.getElementById('kpiToxSub').textContent = `PM2.5 + water + chemical composite`;
+  document.getElementById('kpiSurv').textContent = survScore;
+  document.getElementById('kpiSurvSub').textContent = `Global composite (100 = optimal)`;
+
+  // Color the survivability score (danger red when below threshold)
+  const survEl = document.getElementById('kpiSurv');
+  survEl.className = parseFloat(survScore) < 40 ? 'kpi-value danger' : 'kpi-value';
+
+  // Update dimension scores
+  document.querySelectorAll('.dim-toggle').forEach(el => {
+    const dim = el.dataset.dim;
+    const avgScore = Math.round(riskPoints.reduce((a,p) => a + getValueAtYear(p[dim], currentYear), 0) / riskPoints.length);
+    el.querySelector('.dim-score').textContent = avgScore;
+  });
+
+  // Update legend
+  document.getElementById('legendTitle').textContent = DIMS[currentDim].label;
+
+  // Update map
+  renderPoints();
+}
+
+// ── DIMENSION SELECTION ──
+function setDimension(dim, el) {
+  currentDim = dim;
+  document.querySelectorAll('.dim-toggle').forEach(t => t.classList.remove('active'));
+  if (el) {
+    el.classList.add('active');
+  } else {
+    const toggle = document.querySelector(`.dim-toggle[data-dim="${dim}"]`);
+    if (toggle) toggle.classList.add('active');
+  }
+  updateUI();
+}
+
+// ── YEAR CONTROL ──
+function setYear(year) {
+  currentYear = Math.max(2025, Math.min(2100, parseInt(year)));
+  updateUI();
+}
+
+function stepYear(delta) {
+  setYear(currentYear + delta);
+}
+
+function togglePlay() {
+  if (isPlaying) {
+    stopPlay();
+  } else {
+    startPlay();
+  }
+}
+
+function startPlay() {
+  isPlaying = true;
+  document.getElementById('playBtn').textContent = '⏸';
+  playInterval = setInterval(() => {
+    if (currentYear >= 2100) {
+      stopPlay();
+      return;
+    }
+    setYear(currentYear + 1);
+  }, 200);
+}
+
+function stopPlay() {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+  if (playInterval) { clearInterval(playInterval); playInterval = null; }
+}
+
+// ── SIDEBAR TOGGLE ──
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('sidebarToggle');
+  if (sidebarOpen) {
+    sidebar.classList.remove('collapsed');
+    toggle.textContent = '◀';
+  } else {
+    sidebar.classList.add('collapsed');
+    toggle.textContent = '▶';
+  }
+  // Let map recalculate size
+  setTimeout(() => map.invalidateSize(), 250);
+}
+
+// ── KEYBOARD SHORTCUTS ──
+document.addEventListener('keydown', function(e) {
+  switch(e.key) {
+    case 'ArrowRight': stepYear(e.shiftKey ? 5 : 1); break;
+    case 'ArrowLeft':  stepYear(e.shiftKey ? -5 : -1); break;
+    case ' ': e.preventDefault(); togglePlay(); break;
+    case 'b': toggleSidebar(); break;
+    case '1': setDimension('heat'); break;
+    case '2': setDimension('air'); break;
+    case '3': setDimension('water'); break;
+    case '4': setDimension('poverty'); break;
+  }
+});
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', function() {
+  initMap();
+  updateUI();
+});
+
+window.addEventListener('resize', function() {
+  if (map) map.invalidateSize();
+});
+</script>
+</body>
+</html>
